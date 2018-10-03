@@ -1,6 +1,7 @@
 package com.example.jor.dechiffrierer;
 
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
@@ -11,7 +12,10 @@ import android.support.v4.content.FileProvider;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import java.io.Console;
 import java.io.File;
@@ -22,6 +26,9 @@ import java.io.InputStream;
 import java.net.URI;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+
+import static com.sun.activation.registries.LogSupport.log;
+import static java.awt.SystemColor.menu;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -119,13 +126,49 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
-        super.onActivityResult(requestCode, resultCode, intent);
-        if (Build.VERSION.SDK_INT == Build.VERSION_CODES.M){
-            final Uri data = intent.getData();
-            final File file = new File(data.getPath());
-            // now you can upload your image file
+        if (requestCode == SCAN_QR_CODE_REQUEST_CODE) {
+            if (resultCode == RESULT_OK) {
+                String logMsg = intent.getStringExtra("SCAN_RESULT");
+                log(logMsg);
+            }
         }else{
-            // in android version lower than M your method must work
+            super.onActivityResult(requestCode, resultCode, intent);
+            if (Build.VERSION.SDK_INT == Build.VERSION_CODES.M){
+                final Uri data = intent.getData();
+                final File file = new File(data.getPath());
+                // now you can upload your image file
+            }else{
+                // in android version lower than M your method must work
+            }
         }
     }
+
+    private static final int SCAN_QR_CODE_REQUEST_CODE = 0;
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuItem menuItem = menu.add("Log");
+        menuItem.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item) {
+                Intent intent = new Intent("com.google.zxing.client.android.SCAN");
+                intent.putExtra("SCAN_MODE", "QR_CODE_MODE");
+                startActivityForResult(intent, SCAN_QR_CODE_REQUEST_CODE);
+                return false;
+            }
+        });
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    private void log(String qrCode) {
+        Intent intent = new Intent("ch.appquest.intent.LOG");
+        if (getPackageManager().queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY).isEmpty()) {
+            Toast.makeText(this, "Logbook App not Installed", Toast.LENGTH_LONG).show();
+            return;
+        }
+        // Achtung, je nach App wird etwas anderes eingetragen
+        String logmessage = "{\n" + "  \"task\": \"Metalldetektor\",\n" + "  \"solution\": \" "+ qrCode+" \"\n" +"}";
+        intent.putExtra("ch.appquest.logmessage", logmessage);
+        startActivity(intent);
+    }
+
 }
