@@ -1,6 +1,8 @@
 package com.example.jor.dechiffrierer;
 
 import android.annotation.SuppressLint;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -9,10 +11,12 @@ import android.graphics.drawable.BitmapDrawable;
 import android.provider.MediaStore;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.InputType;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.Toast;
 import java.util.ArrayList;
@@ -20,20 +24,15 @@ import java.util.List;
 import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity
-    {
-    private static final int SCAN_QR_CODE_REQUEST_CODE;
+{
+
 
     @SuppressLint("StaticFieldLeak")
     private static ImageView imgTakenPic;
 
-    private static final int CAM_REQUEST;
+    private static final int CAM_REQUEST = 1313;
 
-    static
-    {
-        SCAN_QR_CODE_REQUEST_CODE = 0;
-        CAM_REQUEST = 1313;
-    }
-
+    private String logmessage;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -58,22 +57,15 @@ public class MainActivity extends AppCompatActivity
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent intent)
     {
-        if (requestCode == SCAN_QR_CODE_REQUEST_CODE)
+        if(requestCode == CAM_REQUEST)
         {
-            if (resultCode == RESULT_OK)
-            {
-                String logMsg = intent.getStringExtra("SCAN_RESULT");
-                log(logMsg);
-            }
-        }
-        else
-            {
             super.onActivityResult(requestCode, resultCode, intent);
-            if(requestCode == CAM_REQUEST) {
-                Bitmap bitmap = (Bitmap) Objects.requireNonNull(intent.getExtras()).get("data");
-                imgTakenPic.setImageBitmap(bitmap);
-            }
+
+            Bitmap bitmap = (Bitmap) Objects.requireNonNull(intent.getExtras()).get("data");
+            imgTakenPic.setImageBitmap(bitmap);
         }
+
+        else return;
     }
 
     @Override
@@ -85,13 +77,52 @@ public class MainActivity extends AppCompatActivity
             @Override
             public boolean onMenuItemClick(MenuItem item)
             {
-                Intent intent = new Intent("com.google.zxing.client.android.SCAN");
-                intent.putExtra("SCAN_MODE", "QR_CODE_MODE");
-                startActivityForResult(intent, SCAN_QR_CODE_REQUEST_CODE);
-                return false;
+                return log();
             }
         });
+
         return super.onCreateOptionsMenu(menu);
+    }
+
+    private boolean log()
+    {
+        Intent intent = new Intent("ch.appquest.intent.LOG");
+        if (getPackageManager().queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY).isEmpty())
+        {
+            Toast.makeText(this, "Logbook App not Installed", Toast.LENGTH_LONG).show();
+            return false;
+        }
+
+        GetLogMessage();
+
+        intent.putExtra("ch.appquest.logmessage", logmessage);
+        startActivity(intent);
+        return true;
+    }
+
+    private void GetLogMessage(){
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Title");
+
+        final EditText input = new EditText(this);
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        builder.setView(input);
+
+        builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                logmessage = input.getText().toString();
+            }
+        });
+        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.cancel();
+            }
+        });
+
+        builder.show();
     }
 
     class btnTakePhotoClicker implements Button.OnClickListener
@@ -159,20 +190,6 @@ public class MainActivity extends AppCompatActivity
             }
             return ret;
         }
-    }
-
-    private void log(String qrCode)
-    {
-        Intent intent = new Intent("ch.appquest.intent.LOG");
-        if (getPackageManager().queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY).isEmpty())
-        {
-            Toast.makeText(this, "Logbook App not Installed", Toast.LENGTH_LONG).show();
-            return;
-        }
-
-        String logmessage = "{\n" + "  \"task\": \"Metalldetektor\",\n" + "  \"solution\": \" "+ qrCode+" \"\n" +"}";
-        intent.putExtra("ch.appquest.logmessage", logmessage);
-        startActivity(intent);
     }
 
 }
